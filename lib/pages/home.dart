@@ -1,8 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/pitch_service.dart';
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage ({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+
+class _HomePageState extends State<HomePage> {
+  final _pitchService = PitchService();
+  double? _hz;
+
+  @override
+  void initState() {
+    super.initState();
+    _pitchService.hzStream.listen((hz) {
+      if (mounted) setState (() => _hz = hz);
+    });
+
+    _startRecording();
+  }
+
+  Future<void> _startRecording() async {
+    final started = await _pitchService.start();
+    print('start() returned: $started');
+  }
+
+  @override
+  void dispose() {
+    _pitchService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +95,7 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: Text('0 cents', 
+                      child: Text(_hz != null ? '${_hz!.toStringAsFixed(1)} Hz' : '-', 
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xff7B9BF5),),
                       ),
