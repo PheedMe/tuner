@@ -12,7 +12,7 @@ class HomePage extends StatelessWidget {
 
 
       body: Padding(
-        padding: const EdgeInsets.only(top: 35, left: 25, right: 25),
+        padding: const EdgeInsets.only(top: 5, left: 25, right: 25),
         child: Column(
           children: [
             Row(
@@ -28,48 +28,85 @@ class HomePage extends StatelessWidget {
                 )
               ]
             ),
-            const SizedBox(height: 70),
+            const SizedBox(height: 90),
             Center(
               child: SvgPicture.asset('assets/icons/in-tune-arrow.svg'),
             ),
-            const SizedBox(height: 10),
-            Center(
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  SvgPicture.asset('assets/icons/measurement.svg'),
-                  Transform.rotate(
-                    angle: 0.0,
-                    alignment: Alignment.center,
-                    child: SvgPicture.asset('assets/icons/needle.svg')
-                  )
-                ]
+
+            SizedBox(
+              height: 170,
+              child: FittedBox(
+                fit: BoxFit.none,
+                alignment: Alignment.topCenter,
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    SvgPicture.asset('assets/icons/measurement.svg'),
+                    Transform.rotate(
+                      angle: 1.55, //angle should be between -1.55 and 1.55
+                      alignment: Alignment.center,
+                      child: SvgPicture.asset('assets/icons/needle.svg')
+                    )
+                  ]
+                ),
               ),
             ),
+            const SizedBox(height: 10),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 36),
-              child: Transform.translate(
-                offset: Offset(0, -140),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: EdgeInsets.symmetric(horizontal: 34),
+              child: Row(
                   children: [
-                    Text('B4',
-                    style: TextStyle(color: Color(0xff7B9BF5))),
-                    Text('0 cents',
-                    style: TextStyle(color: Color(0xff7B9BF5))),
-                    Text('C#4',
-                    style: TextStyle(color: Color(0xff7B9BF5))),
+                    Expanded(
+                      child: Text('B4', 
+                      textAlign: TextAlign.left,
+                      style: TextStyle(color: Color(0xff7B9BF5))
+                      ),
+                    ),
+                    Expanded(
+                      child: Text('0 cents', 
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xff7B9BF5),),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text('C#4', 
+                      textAlign: TextAlign.right,
+                      style: TextStyle(color: Color(0xff7B9BF5))
+                      ),
+                    ),
                   ],
                 )
-              )
+              ),
+            Text('C',
+            style: TextStyle(fontSize: 200,
+            fontWeight: FontWeight.w900,
+            height: 1.0),
             ),
-            Transform.translate(
-              offset: Offset(0, -140),
-              child: Text('C',
-              style: TextStyle(fontSize: 150),) 
-            ),
-            Text('Hello')
+            const SizedBox(height: 35),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xff3483C8),
+                    foregroundColor: Colors.white
+                  ),
+                  onPressed: () {
+                  },
+                  child: Text('Tuning Drone')
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xff3483C8),
+                    foregroundColor: Colors.white
+                  ),
+                  onPressed: () {
+                  },
+                  child: Text('Metronome')
+                )
+              ]
+            )
           ]
         )
       ), 
