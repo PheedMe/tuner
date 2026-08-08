@@ -6,6 +6,7 @@ double? detectPitch(
     double minHz = 60,
     double maxHz = 1000,
     double silenceRmsThreshold = 0.01,
+    double threshold = 0.25
   }
 ) {
   final n = samples.length;
@@ -18,59 +19,63 @@ double? detectPitch(
   final rms = math.sqrt(sumSquares / n);
   if (rms < silenceRmsThreshold) return null;
 
-  final minLag = (sampleRate / maxHz).floor().clamp(1, n - 1);
-  final maxLag = (sampleRate / minHz).floor().clamp(1, n - 1);
-  if (minLag >= maxLag) return null;
+  final tauMin = (sampleRate / maxHz).floor().clamp(1, n - 1);
+  final tauMax = (sampleRate / minHz).floor().clamp(1, n - 1);
+  if (tauMin >= tauMax) return null;
 
-  double bestCorr = 0;
-  int bestLag = -1;
-
-  for (int lag = minLag; lag <= maxLag; lag++) {
-    double corr = 0;
-    for (int i = 0; i < n - lag; i++) {
-      corr += samples[i] * samples[i + lag];
+  final diff = List<double>.filled(tauMax + 1, 0.0);
+  for (int tau = 1; tau <= tauMax; tau++) {
+    double sum = 0;
+    for (int j = 0; j < n - tau; j++) {
+      final delta = samples[j] - samples[j + tau];
+      sum += delta * delta;
     }
+    diff[tau] = sum;
+  }
 
-    corr /= (n - lag);
+  final cmndf = List<double>.filled(tauMax + 1, 1.0);
+  double runningSum = 0;
+  for (int tau = 1; tau <= tauMax; tau++) {
+    runningSum += diff[tau];
+    cmndf[tau] = runningSum > 0 ? diff[tau] * tau / runningSum : 1.0;
+  }
 
-    if (corr > bestCorr) {
-      bestCorr = corr;
-      bestLag = lag;
+  int tauEstimate = -1;
+  for (int tau = tauMin; tau <= tauMax; tau++) {
+    if (cmndf[tau] < threshold) {
+      while (tau + 1 <= tauMax && cmndf[tau + 1] < cmndf[tau]) {
+        tau++;
+      }
+      tauEstimate = tau;
+      break;
     }
   }
 
-  if (bestLag <= 0) return null;
+  if (tauEstimate == -1) return null;
 
-  final refinedLag = _parabolicInterpolation(samples, bestLag, minLag, maxLag);
-  return sampleRate / refinedLag;
+  final refinedTau = _parabolicInterpolation(cmndf, tauEstimate, tauMin, tauMax);
+  if (refinedTau <= 0) return null;
+
+  return sampleRate / refinedTau;
 }
 
 double _parabolicInterpolation(
-List<double> samples,
-int bestLag,
-int minLag,
-int maxLag,
+  List<double> cmndf,
+  int tauEstimate,
+  int tauMin,
+  int tauMax,
 ) {
-  double corrAt(int lag) {
-    double c = 0;
-    final n = samples.length;
-    for (int i = 0; i < n - lag; i++) {
-      c += samples[i] * samples[i + lag];
-    }
-    return c / (n - lag);
+  if (tauEstimate - 1 < tauMin || tauEstimate + 1 > tauMax) {
+    return tauEstimate.toDouble();
   }
 
-  if (bestLag - 1 < minLag || bestLag + 1 > maxLag) {
-    return bestLag.toDouble();
-  }
-
-  final yMinus = corrAt(bestLag - 1);
-  final yCenter = corrAt(bestLag);
-  final yPlus = corrAt(bestLag + 1);
+  final yMinus = cmndf[tauEstimate - 1];
+  final yCenter = cmndf[tauEstimate];
+  final yPlus = cmndf[tauEstimate + 1];
 
   final denom = (yMinus - 2 * yCenter + yPlus);
-  if (denom == 0) return bestLag.toDouble();
+  if (denom == 0) return tauEstimate.toDouble();
 
   final shift = 0.5 * (yMinus - yPlus) / denom;
-  return bestLag + shift;
+  return tauEstimate + shift;
 }

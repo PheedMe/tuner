@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/pitch_service.dart';
 
+import '../audio/note_utils.dart';
+import '../audio/tuner_smoother.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage ({super.key});
 
@@ -12,21 +15,37 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _pitchService = PitchService();
-  double? _hz;
+  
+  final _tunerSmoother = TunerSmoother(windowSize: 5);
+  NoteResult? _displayNote;
+
+  bool _isRecording = false;
+  String? _error;
+
 
   @override
   void initState() {
     super.initState();
-    _pitchService.hzStream.listen((hz) {
-      if (mounted) setState (() => _hz = hz);
-    });
-
+    _pitchService.hzStream.listen(_onHz);
     _startRecording();
   }
 
   Future<void> _startRecording() async {
     final started = await _pitchService.start();
-    print('start() returned: $started');
+    if (!started) {
+      setState(() => _error = 'Microphone permission denied.');
+      return;
+    }
+    setState(() {
+      _isRecording = true;
+      _error = null;
+    });
+  }
+
+  void _onHz(double hz) {
+    final smoothedNote = _tunerSmoother.addReading(hz);
+    if (!mounted) return;
+    setState(() => _displayNote = smoothedNote);
   }
 
   @override
@@ -37,6 +56,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final note = _displayNote;
+
     return Scaffold(
       backgroundColor: Color(0xff131936),
       appBar: appBar(),
@@ -94,12 +115,13 @@ class _HomePageState extends State<HomePage> {
                       style: TextStyle(color: Color(0xff7B9BF5))
                       ),
                     ),
-                    Expanded(
-                      child: Text(_hz != null ? '${_hz!.toStringAsFixed(1)} Hz' : '-', 
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xff7B9BF5),),
+                    if (note != null)
+                      Expanded(
+                        child: Text('${note.cents >= 0 ? '+' : ''}${note.cents.toStringAsFixed(1)}¢', 
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xff7B9BF5),),
+                        ),
                       ),
-                    ),
                     Expanded(
                       child: Text('C#4', 
                       textAlign: TextAlign.right,
@@ -109,7 +131,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 )
               ),
-            Text('C',
+            Text(note != null ? note.note : (_isRecording ? '_' : '-'),
             style: TextStyle(fontSize: 200,
             fontWeight: FontWeight.w900,
             height: 1.0),
