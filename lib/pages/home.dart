@@ -22,6 +22,9 @@ class _HomePageState extends State<HomePage> {
   bool _isRecording = false;
   String? _error;
 
+  static const double _maxAngleRad = 1.55;
+  static const double _maxCents = 50;
+
 
   @override
   void initState() {
@@ -54,6 +57,12 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  double get _targetAngle{
+    final cents = _displayNote?.cents ?? 0;
+    final clamped = cents.clamp(-_maxCents, _maxCents);
+    return (clamped / _maxCents) * _maxAngleRad;
+  }
+
   @override
   Widget build(BuildContext context) {
     final note = _displayNote;
@@ -82,7 +91,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 90),
             Center(
-              child: SvgPicture.asset('assets/icons/in-tune-arrow.svg'),
+              child: SvgPicture.asset('assets/icons/out-tune-arrow.svg'),
             ),
 
             SizedBox(
@@ -95,22 +104,33 @@ class _HomePageState extends State<HomePage> {
                   clipBehavior: Clip.none,
                   children: [
                     SvgPicture.asset('assets/icons/measurement.svg'),
-                    Transform.rotate(
-                      angle: 1.55, //angle should be between -1.55 and 1.55
-                      alignment: Alignment.center,
-                      child: SvgPicture.asset('assets/icons/needle.svg')
-                    )
+                    // Transform.rotate(
+                    //   angle: 0.0, //angle should be between -1.55 and 1.55
+                    //   alignment: Alignment.center,
+                    //   child: SvgPicture.asset('assets/icons/needle.svg')
+                    // )
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(end: _targetAngle), 
+                      duration: const Duration(milliseconds: 180),
+                      builder: (context, angle, child) {
+                        return Transform.rotate(
+                          angle: angle,
+                          child: child,
+                        );
+                      },
+                      child: SvgPicture.asset('assets/icons/needle.svg'),
+                    ),
                   ]
                 ),
               ),
             ),
             const SizedBox(height: 10),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 34),
+              padding: EdgeInsets.symmetric(horizontal: 43),
               child: Row(
                   children: [
                     Expanded(
-                      child: Text('B4', 
+                      child: Text('b', 
                       textAlign: TextAlign.left,
                       style: TextStyle(color: Color(0xff7B9BF5))
                       ),
@@ -123,7 +143,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                     Expanded(
-                      child: Text('C#4', 
+                      child: Text('#', 
                       textAlign: TextAlign.right,
                       style: TextStyle(color: Color(0xff7B9BF5))
                       ),
@@ -131,11 +151,19 @@ class _HomePageState extends State<HomePage> {
                   ],
                 )
               ),
-            Text(note != null ? note.note : (_isRecording ? '_' : '-'),
-            style: TextStyle(fontSize: 200,
-            fontWeight: FontWeight.w900,
-            height: 1.0),
-            ),
+              SizedBox(
+                height: 200,
+                child: Center(
+                  child: note != null
+                    ? Text(note.note, style: TextStyle(fontSize: 200, fontWeight: FontWeight.w900, height: 1.0))
+                    : Text(
+                      _isRecording ? 'Listening...' : 'Loading...',
+                      style: TextStyle(
+                        fontSize: 50,
+                        fontWeight: FontWeight.w700,)
+                    ),
+                ),
+              ),
             const SizedBox(height: 35),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
