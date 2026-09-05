@@ -19,7 +19,7 @@ class TunerNeedleGauge extends StatelessWidget {
     super.key,
     required this.cents,
     this.size = const Size(280, 160),
-    this.animationDuration = const Duration(milliseconds: 180),
+    this.animationDuration = const Duration(milliseconds: 80),
   });
 
   /// Current cents deviation, -50 (flat) to +50 (sharp). Pass 0 for
@@ -59,7 +59,7 @@ class TunerNeedleGauge extends StatelessWidget {
           TweenAnimationBuilder<double>(
             tween: Tween<double>(end: _targetAngle),
             duration: animationDuration,
-            curve: Curves.easeOut,
+            curve: Curves.linear,
             builder: (context, angle, child) {
               return Transform.rotate(
                 angle: angle,

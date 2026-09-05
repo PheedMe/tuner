@@ -5,18 +5,18 @@ import '../services/pitch_service.dart';
 import '../audio/note_utils.dart';
 import '../audio/tuner_smoother.dart';
 
+import 'dart:async';
+
 class HomePage extends StatefulWidget {
-  const HomePage ({super.key});
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-
 class _HomePageState extends State<HomePage> {
   final _pitchService = PitchService();
-  
-  final _tunerSmoother = TunerSmoother(windowSize: 5);
+  final _tunerSmoother = TunerSmoother(centsWindowSize: 5);
   NoteResult? _displayNote;
 
   bool _isRecording = false;
@@ -25,6 +25,10 @@ class _HomePageState extends State<HomePage> {
   static const double _maxAngleRad = 1.55;
   static const double _maxCents = 50;
 
+  Timer? _inTuneHoldTimer;
+  Timer? _silenceTimer;
+  bool _wasInRange = false;
+  bool _isConfirmedInTune = false;
 
   @override
   void initState() {
@@ -46,22 +50,49 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onHz(double hz) {
-    final smoothedNote = _tunerSmoother.addReading(hz);
-    if (!mounted) return;
+  final smoothedNote = _tunerSmoother.addReading(hz);
+  if (!mounted) return;
+
+  // Only overwrite the displayed note when the smoother actually
+  // returns one — a transient null (e.g. right as the note-lock
+  // switches) won't blank a note that's still being played, and
+  // once you stop entirely, the last note just stays on screen.
+  if (smoothedNote != null) {
     setState(() => _displayNote = smoothedNote);
   }
+  _upDateInTuneState(smoothedNote);
+}
 
-  @override
-  void dispose() {
-    _pitchService.dispose();
-    super.dispose();
-  }
+@override
+void dispose() {
+  _inTuneHoldTimer?.cancel();
+  _pitchService.dispose();
+  super.dispose();
+}
 
-  double get _targetAngle{
+  double get _targetAngle {
     final cents = _displayNote?.cents ?? 0;
     final clamped = cents.clamp(-_maxCents, _maxCents);
     return (clamped / _maxCents) * _maxAngleRad;
   }
+
+  void _upDateInTuneState(NoteResult? note) {
+    final inRange = note != null && note.cents >= -10 && note.cents <= 10;
+
+    if (inRange && !_wasInRange) {
+      _inTuneHoldTimer?.cancel();
+      _inTuneHoldTimer = Timer(const Duration(milliseconds: 250), () {
+        if (mounted) setState(() => _isConfirmedInTune = true);
+      });
+    } else if (!inRange && _wasInRange) {
+      _inTuneHoldTimer?.cancel();
+      if (_isConfirmedInTune) {
+        setState(() => _isConfirmedInTune = false);
+      }
+    }
+    _wasInRange = inRange;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +122,14 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 90),
             Center(
-              child: SvgPicture.asset('assets/icons/out-tune-arrow.svg'),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: SvgPicture.asset(
+                  _isConfirmedInTune
+                    ? 'assets/icons/in-tune-arrow.svg' : 'assets/icons/out-tune-arrow.svg',
+                  key: ValueKey(_isConfirmedInTune),
+                )
+              ),
             ),
 
             SizedBox(
@@ -103,12 +141,7 @@ class _HomePageState extends State<HomePage> {
                   alignment: Alignment.center,
                   clipBehavior: Clip.none,
                   children: [
-                    SvgPicture.asset('assets/icons/measurement.svg'),
-                    // Transform.rotate(
-                    //   angle: 0.0, //angle should be between -1.55 and 1.55
-                    //   alignment: Alignment.center,
-                    //   child: SvgPicture.asset('assets/icons/needle.svg')
-                    // )
+                    Image.asset('assets/icons/measurement.png'),
                     TweenAnimationBuilder<double>(
                       tween: Tween<double>(end: _targetAngle), 
                       duration: const Duration(milliseconds: 180),

@@ -9,9 +9,9 @@ import '../audio/ring_buffer.dart';
 class PitchService {
   PitchService({
     this.sampleRate = 44100,
-    int analysisWindowSamples = 2048,
-    this.minHz = 60,
-    this.maxHz = 1000,
+    int analysisWindowSamples = 4096,
+    this.minHz = 70,
+    this.maxHz = 4200,
   }) : _ringBuffer = RingBuffer (analysisWindowSamples);
 
   final int sampleRate;
